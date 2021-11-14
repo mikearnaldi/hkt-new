@@ -14,18 +14,29 @@ export const SemigroupString = P.instance<P.Semigroup<string>>({
 })
 
 //
+// Identity
+//
+export interface Identity<A> {
+  (a: A): A
+}
+
+export interface IdentityF extends P.HKT {
+  readonly type: this["A"]
+}
+
+export const MonadIdentity = P.instance<P.Monad<IdentityF>>({
+  of: (a) => a,
+  map: (f) => (a) => f(a),
+  chain: (f) => (a) => f(a)
+})
+
+//
 // Option
 //
 
 export interface OptionF extends P.HKT {
   readonly type: O.Option<this["A"]>
 }
-
-export const MonadOption = P.instance<P.Monad<OptionF>>({
-  of: O.some,
-  map: O.map,
-  chain: O.chain
-})
 
 export function optionT<F extends P.HKT>(F: P.Monad<F>) {
   return P.instance<P.Monad<P.ComposeF<F, OptionF>>>({
@@ -35,6 +46,8 @@ export function optionT<F extends P.HKT>(F: P.Monad<F>) {
   })
 }
 
+export const MonadOption = optionT(MonadIdentity)
+
 //
 // Either
 //
@@ -42,12 +55,6 @@ export function optionT<F extends P.HKT>(F: P.Monad<F>) {
 export interface EitherF extends P.HKT {
   readonly type: E.Either<this["E"], this["A"]>
 }
-
-export const MonadEither = P.instance<P.Monad<EitherF>>({
-  of: E.right,
-  map: E.map,
-  chain: E.chain
-})
 
 export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
   return P.instance<P.Monad<P.ComposeF<F, EitherF>>>({
@@ -66,6 +73,8 @@ export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
       )
   })
 }
+
+export const MonadEither = eitherT(MonadIdentity)
 
 export const FailableEither = P.instance<P.Failable<EitherF>>({
   fail: E.left
