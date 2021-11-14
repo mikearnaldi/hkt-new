@@ -286,8 +286,8 @@ export interface State<F extends P.HKT, S> extends P.Typeclass<StateT<F, S>> {
   ) => <R, E, A>(fa: P.Kind<StateT<F, S>, R, E, A>) => P.Kind<F, R, E, A>
 }
 
-export function stateT<F extends P.HKT>(F: P.Monad<F>) {
-  return <S>() => {
+export function stateT<S>() {
+  return <F extends P.HKT>(F: P.Monad<F>) => {
     const monad = P.instance<P.Monad<StateT<F, S>>>({
       of: (a) => (s) => F.of([s, a]),
       map: (f) => (fa) => (s) =>
@@ -318,7 +318,7 @@ export function stateT<F extends P.HKT>(F: P.Monad<F>) {
   }
 }
 
-export const StateEffect = P.withDo(stateT(MonadEffect)<string>())
+export const StateEffect = P.withDo(stateT<string>()(MonadEffect))
 
 export const myProgram = pipe(
   StateEffect.do,
