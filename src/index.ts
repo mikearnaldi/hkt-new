@@ -58,15 +58,23 @@ export interface EitherF extends P.HKT {
   readonly type: E.Either<this["E"], this["A"]>
 }
 
+export interface EitherT<F extends P.HKT> extends P.HKT {
+  readonly type: P.Kind<F, this["R"], never, E.Either<this["E"], this["A"]>>
+}
+
 export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
-  return P.instance<P.Monad<P.ComposeF<F, EitherF>>>({
+  return P.instance<P.Monad<EitherT<F>>>({
     of: (a) => F.of(E.right(a)),
-    map: (f) => F.map(E.map(f)),
-    chain: <A, R1, E1, B>(
-      f: (a: A) => P.Kind<F, R1, E1, E.Either<E1, B>>
+    map: <A, B>(
+      f: (a: A) => B
     ): (<R, E>(
-      fa: P.Kind<F, R, E, E.Either<E, A>>
-    ) => P.Kind<F, R & R1, E1 | E, E.Either<E1 | E, B>>) =>
+      fa: P.Kind<F, R, never, E.Either<E, A>>
+    ) => P.Kind<F, R, never, E.Either<E, B>>) => F.map(E.map(f)),
+    chain: <A, R1, E1, B>(
+      f: (a: A) => P.Kind<F, R1, never, E.Either<E1, B>>
+    ): (<R, E>(
+      fa: P.Kind<F, R, never, E.Either<E, A>>
+    ) => P.Kind<F, R & R1, never, E.Either<E1 | E, B>>) =>
       F.chain(
         E.fold(
           (e) => F.of(E.leftW<E1 | typeof e, B>(e)),
@@ -202,8 +210,12 @@ export interface ReaderF extends P.HKT {
   readonly type: Reader<this["R"], this["A"]>
 }
 
+export interface ReaderT<F extends P.HKT> extends P.HKT {
+  readonly type: Reader<this["R"], P.Kind<F, unknown, this["E"], this["A"]>>
+}
+
 export function readerT<F>(F: P.Monad<F>) {
-  return P.instance<P.Monad<P.ComposeF<ReaderF, F>>>({
+  return P.instance<P.Monad<ReaderT<F>>>({
     of: (a) => () => F.of(a),
     map: (f) => (fa) => (r) => pipe(fa(r), F.map(f)),
     chain: (f) => (fa) => (r) =>
