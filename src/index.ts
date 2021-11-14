@@ -269,3 +269,63 @@ export const validatedEffectPar = pipe(
     n % 2 === 0 ? T.access((_: { r: number }) => n + _.r) : T.fail(`${n} is not even`)
   )
 )
+
+export interface StateT<F extends P.HKT, S> extends P.HKT {
+  readonly type: (s: S) => P.Kind<F, this["R"], this["E"], readonly [S, this["A"]]>
+}
+
+export interface State<F extends P.HKT, S> extends P.Typeclass<StateT<F, S>> {
+  readonly get: P.Kind<StateT<F, S>, unknown, never, S>
+
+  readonly update: (
+    f: (s: S) => S
+  ) => <R, E, A>(fa: P.Kind<StateT<F, S>, R, E, A>) => P.Kind<StateT<F, S>, R, E, A>
+
+  readonly runState: (
+    s: S
+  ) => <R, E, A>(fa: P.Kind<StateT<F, S>, R, E, A>) => P.Kind<F, R, E, A>
+}
+
+export function stateT<F extends P.HKT>(F: P.Monad<F>) {
+  return <S>() => {
+    const monad = P.instance<P.Monad<StateT<F, S>>>({
+      of: (a) => (s) => F.of([s, a]),
+      map: (f) => (fa) => (s) =>
+        pipe(
+          fa(s),
+          F.map(([s, a]) => [s, f(a)])
+        ),
+      chain: (f) => (fa) => (s) =>
+        pipe(
+          fa(s),
+          F.chain(([s, a]) => f(a)(s))
+        )
+    })
+    const state = P.instance<State<F, S>>({
+      update: (f) => (fa) => (s) =>
+        pipe(
+          fa(s),
+          F.map(([s, a]) => [f(s), a])
+        ),
+      get: (s) => F.of([s, s]),
+      runState: (s) => (fa) =>
+        pipe(
+          fa(s),
+          F.map(([_, a]) => a)
+        )
+    })
+    return P.intersect(monad, state)
+  }
+}
+
+export const StateEither = pipe(stateT(MonadEither)<string>(), (monad) =>
+  P.intersect(monad, P.getDo(monad))
+)
+
+export const result = pipe(
+  StateEither.do,
+  StateEither.bind("a", () => StateEither.get),
+  StateEither.update((x) => `hello: ${x}`),
+  StateEither.bind("b", () => StateEither.get),
+  StateEither.runState("Mike")
+)
