@@ -61,11 +61,11 @@ export interface Validation<F extends HKT, E> extends HKT {
   readonly type: Kind<F, this["R"], E, this["A"]>
 }
 
-export function getValidation<F extends HKT, E>(
+export function getValidation<F extends HKT, Z>(
   F: Monad<F> & Failable<F> & Eitherable<F>,
-  S: Semigroup<E>
+  S: Semigroup<Z>
 ) {
-  return instance<Applicative<Validation<F, E>>>({
+  return instance<Applicative<Validation<F, Z>>>({
     of: F.of,
     map: F.map,
     ap: (fa) => (fab) =>
