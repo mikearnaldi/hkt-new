@@ -48,6 +48,8 @@ export function optionT<F extends P.HKT>(F: P.Monad<F>) {
 
 export const MonadOption = optionT(MonadIdentity)
 
+export const ApplicativeOption = P.getApplicative(MonadOption)
+
 //
 // Either
 //
@@ -76,6 +78,8 @@ export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
 
 export const MonadEither = eitherT(MonadIdentity)
 
+export const ApplicativeEither = P.getApplicative(MonadEither)
+
 export const FailableEither = P.instance<P.Failable<EitherF>>({
   fail: E.left
 })
@@ -86,6 +90,7 @@ export const EitherableEither = P.instance<P.Eitherable<EitherF>>({
 
 export const getValidationEither = P.getValidation(
   MonadEither,
+  ApplicativeEither,
   FailableEither,
   EitherableEither
 )
@@ -153,6 +158,14 @@ export const MonadEffect = P.instance<P.Monad<EffectF>>({
   chain: T.chain
 })
 
+export const ApplicativeEffect = P.getApplicative(MonadEffect)
+
+export const ApplicativeEffectPar = P.instance<P.Applicative<EffectF>>({
+  of: T.succeed,
+  map: T.map,
+  ap: (fa) => (fab) => T.zipWithPar_(fa, fab, (a, f) => f(a))
+})
+
 export const FailableEffect = P.instance<P.Failable<EffectF>>({
   fail: T.fail
 })
@@ -163,6 +176,14 @@ export const EitherableEffect = P.instance<P.Eitherable<EffectF>>({
 
 export const getValidationEffect = P.getValidation(
   MonadEffect,
+  ApplicativeEffect,
+  FailableEffect,
+  EitherableEffect
+)
+
+export const getValidationEffectPar = P.getValidation(
+  MonadEffect,
+  ApplicativeEffectPar,
   FailableEffect,
   EitherableEffect
 )
@@ -224,6 +245,13 @@ export const validatedEither = pipe(
 export const validatedEffect = pipe(
   C.many(0, 1, 2, 3),
   TraversableChunk.traverse(getValidationEffect(SemigroupString))((n) =>
+    n % 2 === 0 ? T.access((_: { r: number }) => n + _.r) : T.fail(`${n} is not even`)
+  )
+)
+
+export const validatedEffectPar = pipe(
+  C.many(0, 1, 2, 3),
+  TraversableChunk.traverse(getValidationEffectPar(SemigroupString))((n) =>
     n % 2 === 0 ? T.access((_: { r: number }) => n + _.r) : T.fail(`${n} is not even`)
   )
 )
