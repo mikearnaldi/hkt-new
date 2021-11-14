@@ -1,8 +1,10 @@
+import type { Either } from "@effect-ts/core"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { HKT, Kind } from "./hkt.js"
 import type {
   Applicative,
+  Apply,
   Eitherable,
   Failable,
   Monad,
@@ -61,7 +63,7 @@ export interface Validation<F extends HKT, E> extends HKT {
   readonly type: Kind<F, this["R"], E, this["A"]>
 }
 
-export function getZip<F extends HKT>(F: Applicative<F>) {
+export function getZip<F extends HKT>(F: Apply<F>) {
   return <R, E, A, R1, E1, A1>(fa: Kind<F, R, E, A>, fb: Kind<F, R1, E1, A1>) =>
     pipe(
       fb,
@@ -72,16 +74,17 @@ export function getZip<F extends HKT>(F: Applicative<F>) {
 
 export function getValidation<F extends HKT>(
   M: Monad<F>,
-  A: Applicative<F>,
+  A: Apply<F>,
   F: Failable<F>,
   E: Eitherable<F>
 ) {
   const zip = getZip(A)
 
   return <Z>(S: Semigroup<Z>) =>
-    instance<Applicative<Validation<F, Z>>>({
+    instance<Applicative<Validation<F, Z>> & Monad<Validation<F, Z>>>({
       of: M.of,
       map: M.map,
+      chain: M.chain,
       ap: (fa) => (fab) =>
         pipe(
           zip(E.either(fa), E.either(fab)),

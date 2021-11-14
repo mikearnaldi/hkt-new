@@ -48,7 +48,7 @@ export function optionT<F extends P.HKT>(F: P.Monad<F>) {
 
 export const MonadOption = optionT(MonadIdentity)
 
-export const ApplicativeOption = P.getApplicative(MonadOption)
+export const ApplyOption = P.getApply(MonadOption)
 
 //
 // Either
@@ -78,7 +78,7 @@ export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
 
 export const MonadEither = eitherT(MonadIdentity)
 
-export const ApplicativeEither = P.getApplicative(MonadEither)
+export const ApplyEither = P.getApply(MonadEither)
 
 export const FailableEither = P.instance<P.Failable<EitherF>>({
   fail: E.left
@@ -90,7 +90,7 @@ export const EitherableEither = P.instance<P.Eitherable<EitherF>>({
 
 export const getValidationEither = P.getValidation(
   MonadEither,
-  ApplicativeEither,
+  ApplyEither,
   FailableEither,
   EitherableEither
 )
@@ -123,8 +123,11 @@ export const MonadChunk = P.instance<P.Monad<ChunkF>>({
   chain: C.chain
 })
 
-export function chunkT<F extends P.HKT>(F: P.Monad<F>) {
-  const traverse = TraversableChunk.traverse(P.getApplicative(F))
+export function chunkT<F extends P.HKT>(
+  F: P.Monad<F>,
+  A: P.Applicative<F> = P.getApplicative(F)
+) {
+  const traverse = TraversableChunk.traverse(A)
   return P.instance<P.Monad<P.ComposeF<F, ChunkF>>>({
     of: (a) => F.of(C.single(a)),
     map: (f) => F.map(C.map(f)),
@@ -158,10 +161,9 @@ export const MonadEffect = P.instance<P.Monad<EffectF>>({
   chain: T.chain
 })
 
-export const ApplicativeEffect = P.getApplicative(MonadEffect)
+export const ApplyEffect = P.getApply(MonadEffect)
 
-export const ApplicativeEffectPar = P.instance<P.Applicative<EffectF>>({
-  of: T.succeed,
+export const ApplyEffectPar = P.instance<P.Apply<EffectF>>({
   map: T.map,
   ap: (fa) => (fab) => T.zipWithPar_(fa, fab, (a, f) => f(a))
 })
@@ -176,14 +178,14 @@ export const EitherableEffect = P.instance<P.Eitherable<EffectF>>({
 
 export const getValidationEffect = P.getValidation(
   MonadEffect,
-  ApplicativeEffect,
+  ApplyEffect,
   FailableEffect,
   EitherableEffect
 )
 
 export const getValidationEffectPar = P.getValidation(
   MonadEffect,
-  ApplicativeEffectPar,
+  ApplyEffectPar,
   FailableEffect,
   EitherableEffect
 )

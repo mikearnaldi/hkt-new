@@ -14,15 +14,14 @@ export interface Pointed<F extends P.HKT> extends Functor<F> {
   readonly of: <A>(a: A) => P.Kind<F, unknown, never, A>
 }
 
-export interface Applicative<F extends P.HKT> extends Pointed<F> {
+export interface Apply<F extends P.HKT> extends Functor<F> {
   readonly ap: <R, E1, A>(
     fa: P.Kind<F, R, E1, A>
   ) => <R1, E, B>(fab: P.Kind<F, R1, E, (a: A) => B>) => P.Kind<F, R & R1, E | E1, B>
 }
 
-export function getApplicative<F extends P.HKT>(F: Monad<F>): Applicative<F> {
+export function getApply<F extends P.HKT>(F: Monad<F>): Apply<F> {
   return instance({
-    of: F.of,
     map: F.map,
     ap:
       <R1, E1, A>(fa: P.Kind<F, R1, E1, A>) =>
@@ -36,6 +35,15 @@ export function getApplicative<F extends P.HKT>(F: Monad<F>): Applicative<F> {
             )
           )
         )
+  })
+}
+
+export interface Applicative<F extends P.HKT> extends Pointed<F>, Apply<F> {}
+
+export function getApplicative<F extends P.HKT>(F: Monad<F>): Applicative<F> {
+  return instance({
+    ...getApply(F),
+    of: F.of
   })
 }
 
