@@ -11,7 +11,7 @@ export interface HKT {
   readonly type?: unknown
 }
 
-export type Kind<F extends HKT, R, E, A> = F extends { readonly type: any }
+export type Kind<F extends HKT, R, E, A> = F extends { readonly type: unknown }
   ? (F & {
       readonly R: R
       readonly E: E
