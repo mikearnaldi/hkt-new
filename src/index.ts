@@ -7,6 +7,13 @@ import * as O from "@effect-ts/system/Option"
 import * as P from "./prelude.js"
 
 //
+// Semigroup
+//
+export const SemigroupString = P.instance<P.Semigroup<string>>({
+  concat: (a, b) => `${a}, ${b}`
+})
+
+//
 // Option
 //
 
@@ -68,9 +75,10 @@ export const EitherableEither = P.instance<P.Eitherable<EitherF>>({
   either: E.right
 })
 
-export const ValidationEither = P.getValidation(
-  P.intersect(MonadEither, FailableEither, EitherableEither),
-  P.instance<P.Semigroup<string>>({ concat: (a, b) => `${a}, ${b}` })
+export const getValidationEither = P.getValidation(
+  MonadEither,
+  FailableEither,
+  EitherableEither
 )
 
 //
@@ -136,6 +144,20 @@ export const MonadEffect = P.instance<P.Monad<EffectF>>({
   chain: T.chain
 })
 
+export const FailableEffect = P.instance<P.Failable<EffectF>>({
+  fail: T.fail
+})
+
+export const EitherableEffect = P.instance<P.Eitherable<EffectF>>({
+  either: T.either
+})
+
+export const getValidationEffect = P.getValidation(
+  MonadEffect,
+  FailableEffect,
+  EitherableEffect
+)
+
 //
 // Reader
 //
@@ -182,9 +204,17 @@ export const program = pipe(
 //
 // Validation Traversal
 //
-export const validated = pipe(
+
+export const validatedEither = pipe(
   C.many(0, 1, 2, 3),
-  TraversableChunk.traverse(ValidationEither)((n) =>
+  TraversableChunk.traverse(getValidationEither(SemigroupString))((n) =>
     n % 2 === 0 ? E.right(n) : E.left(`${n} is not even`)
+  )
+)
+
+export const validatedEffect = pipe(
+  C.many(0, 1, 2, 3),
+  TraversableChunk.traverse(getValidationEffect(SemigroupString))((n) =>
+    n % 2 === 0 ? T.access((_: { r: number }) => n + _.r) : T.fail(`${n} is not even`)
   )
 )

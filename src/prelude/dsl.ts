@@ -61,32 +61,34 @@ export interface Validation<F extends HKT, E> extends HKT {
   readonly type: Kind<F, this["R"], E, this["A"]>
 }
 
-export function getValidation<F extends HKT, Z>(
-  F: Monad<F> & Failable<F> & Eitherable<F>,
-  S: Semigroup<Z>
+export function getValidation<F extends HKT>(
+  M: Monad<F>,
+  F: Failable<F>,
+  E: Eitherable<F>
 ) {
-  return instance<Applicative<Validation<F, Z>>>({
-    of: F.of,
-    map: F.map,
-    ap: (fa) => (fab) =>
-      pipe(
-        F.either(fa),
-        F.chain((ea) =>
-          pipe(
-            F.either(fab),
-            F.chain((efab) => {
-              if (efab._tag === "Left" && ea._tag === "Left") {
-                return F.fail(S.concat(ea.left, efab.left))
-              } else if (ea._tag === "Left") {
-                return F.fail(ea.left)
-              } else if (efab._tag === "Left") {
-                return F.fail(efab.left)
-              } else {
-                return F.of(efab.right(ea.right))
-              }
-            })
+  return <Z>(S: Semigroup<Z>) =>
+    instance<Applicative<Validation<F, Z>>>({
+      of: M.of,
+      map: M.map,
+      ap: (fa) => (fab) =>
+        pipe(
+          E.either(fa),
+          M.chain((ea) =>
+            pipe(
+              E.either(fab),
+              M.chain((efab) => {
+                if (efab._tag === "Left" && ea._tag === "Left") {
+                  return F.fail(S.concat(ea.left, efab.left))
+                } else if (ea._tag === "Left") {
+                  return F.fail(ea.left)
+                } else if (efab._tag === "Left") {
+                  return F.fail(efab.left)
+                } else {
+                  return M.of(efab.right(ea.right))
+                }
+              })
+            )
           )
         )
-      )
-  })
+    })
 }
