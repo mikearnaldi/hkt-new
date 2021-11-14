@@ -1,7 +1,14 @@
 import { pipe } from "@effect-ts/core/Function"
 
 import type { HKT, Kind } from "./hkt.js"
-import type { Monad } from "./typeclasses.js"
+import type {
+  Applicative,
+  Eitherable,
+  Failable,
+  Monad,
+  Semigroup
+} from "./typeclasses.js"
+import { instance } from "./utils.js"
 
 export interface DoF<F extends HKT> {
   do: Kind<F, unknown, never, {}>
@@ -48,4 +55,38 @@ export function getDo<F extends HKT>(F: Monad<F>): DoF<F> {
           )
         )
   }
+}
+
+export interface Validation<F extends HKT, E> extends HKT {
+  readonly type: Kind<F, this["R"], E, this["A"]>
+}
+
+export function getValidation<F extends HKT, E>(
+  F: Monad<F> & Failable<F> & Eitherable<F>,
+  S: Semigroup<E>
+) {
+  return instance<Applicative<Validation<F, E>>>({
+    of: F.of,
+    map: F.map,
+    ap: (fa) => (fab) =>
+      pipe(
+        F.either(fa),
+        F.chain((ea) =>
+          pipe(
+            F.either(fab),
+            F.chain((efab) => {
+              if (efab._tag === "Left" && ea._tag === "Left") {
+                return F.fail(S.concat(ea.left, efab.left))
+              } else if (ea._tag === "Left") {
+                return F.fail(ea.left)
+              } else if (efab._tag === "Left") {
+                return F.fail(efab.left)
+              } else {
+                return F.of(efab.right(ea.right))
+              }
+            })
+          )
+        )
+      )
+  })
 }

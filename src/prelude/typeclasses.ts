@@ -1,4 +1,5 @@
-import { pipe } from "@effect-ts/system/Function"
+import type { Either } from "@effect-ts/core/Either"
+import { pipe } from "@effect-ts/core/Function"
 
 import type * as P from "./hkt.js"
 import { instance } from "./utils.js"
@@ -50,4 +51,18 @@ export interface Traversable<F extends P.HKT> extends P.Typeclass<F> {
   ) => <A, B, RG, EG>(
     f: (a: A) => P.Kind<G, RG, EG, B>
   ) => <RF, EF>(self: P.Kind<F, RF, EF, A>) => P.Kind<G, RG, EG, P.Kind<F, RF, EF, B>>
+}
+
+export interface Semigroup<A> {
+  readonly concat: (left: A, right: A) => A
+}
+
+export interface Eitherable<F extends P.HKT> extends P.Typeclass<F> {
+  readonly either: <R, E, A>(
+    fa: P.Kind<F, R, E, A>
+  ) => P.Kind<F, R, never, Either<E, A>>
+}
+
+export interface Failable<F extends P.HKT> extends P.Typeclass<F> {
+  readonly fail: <E>(fa: E) => P.Kind<F, unknown, E, never>
 }

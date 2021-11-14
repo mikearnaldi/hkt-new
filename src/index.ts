@@ -60,6 +60,19 @@ export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
   })
 }
 
+export const FailableEither = P.instance<P.Failable<EitherF>>({
+  fail: E.left
+})
+
+export const EitherableEither = P.instance<P.Eitherable<EitherF>>({
+  either: E.right
+})
+
+export const ValidationEither = P.getValidation(
+  P.intersect(MonadEither, FailableEither, EitherableEither),
+  P.instance<P.Semigroup<string>>({ concat: (a, b) => `${a}, ${b}` })
+)
+
 //
 // Chunk
 //
@@ -164,4 +177,14 @@ export const program = pipe(
   RO.bind("a", () => (r: EnvX) => O.some(r.x)),
   RO.bind("b", () => (r: EnvY) => O.some(r.y)),
   RO.map(({ a, b }) => a + b)
+)
+
+//
+// Validation Traversal
+//
+export const validated = pipe(
+  C.many(0, 1, 2, 3),
+  TraversableChunk.traverse(ValidationEither)((n) =>
+    n % 2 === 0 ? E.right(n) : E.left(`${n} is not even`)
+  )
 )
