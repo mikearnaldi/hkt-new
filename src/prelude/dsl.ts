@@ -1,7 +1,7 @@
 import type { Either } from "@effect-ts/core"
 import { pipe } from "@effect-ts/core/Function"
 
-import type { HKT, Kind } from "./hkt.js"
+import type { HKT, Kind, URI } from "./hkt.js"
 import type {
   Applicative,
   Apply,
@@ -101,4 +101,9 @@ export function getValidation<F extends HKT>(
           })
         )
     })
+}
+
+export function withDo<I extends Monad<any>>(F: I): I & DoF<I[typeof URI]> {
+  //@ts-expect-error
+  return P.intersect(F, P.getDo(F))
 }

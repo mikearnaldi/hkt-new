@@ -318,14 +318,12 @@ export function stateT<F extends P.HKT>(F: P.Monad<F>) {
   }
 }
 
-export const StateEither = pipe(stateT(MonadEither)<string>(), (monad) =>
-  P.intersect(monad, P.getDo(monad))
-)
+export const StateEffect = P.withDo(stateT(MonadEffect)<string>())
 
-export const result = pipe(
-  StateEither.do,
-  StateEither.bind("a", () => StateEither.get),
-  StateEither.update((x) => `hello: ${x}`),
-  StateEither.bind("b", () => StateEither.get),
-  StateEither.runState("Mike")
+export const myProgram = pipe(
+  StateEffect.do,
+  StateEffect.bind("a", () => StateEffect.get),
+  StateEffect.update((x) => `hello: ${x}`),
+  StateEffect.bind("b", () => StateEffect.get),
+  StateEffect.runState("Mike")
 )
