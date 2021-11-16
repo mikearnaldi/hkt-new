@@ -11,9 +11,10 @@ import type {
   Semigroup
 } from "./typeclasses.js"
 import { instance } from "./utils.js"
+import { GetBot, Mix } from "./variance.js"
 
 export interface DoF<F extends HKT> {
-  do: Kind<F, unknown, never, {}>
+  do: Kind<F, GetBot<F['variance']['R']>, GetBot<F['variance']['E']>, {}>
   bind: <N extends string, R, E, A, Scope>(
     name: N extends keyof Scope ? { error: `binding name '${N}' already in use` } : N,
     fn: (_: Scope) => Kind<F, R, E, A>
@@ -21,8 +22,8 @@ export interface DoF<F extends HKT> {
     self: Kind<F, R0, E0, Scope>
   ) => Kind<
     F,
-    R & R0,
-    E | E0,
+    Mix<F['variance']['R'], [R, R0]>,
+    Mix<F['variance']['E'], [E, E0]>,
     {
       readonly [k in N | keyof Scope]: k extends keyof Scope ? Scope[k] : A
     }
@@ -60,6 +61,7 @@ export function getDo<F extends HKT>(F: Monad<F>): DoF<F> {
 }
 
 export interface Validation<F extends HKT, E> extends HKT {
+  readonly variance: Omit<F['variance'], 'E'> & { readonly E: '_'}
   readonly type: Kind<F, this["R"], E, this["A"]>
 }
 

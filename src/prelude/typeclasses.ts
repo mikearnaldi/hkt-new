@@ -3,6 +3,7 @@ import { pipe } from "@effect-ts/core/Function"
 
 import type * as P from "./hkt.js"
 import { instance } from "./utils.js"
+import { GetBot, Mix } from "./variance"
 
 export interface Functor<F extends P.HKT> extends P.Typeclass<F> {
   readonly map: <A, B>(
@@ -11,13 +12,17 @@ export interface Functor<F extends P.HKT> extends P.Typeclass<F> {
 }
 
 export interface Pointed<F extends P.HKT> extends Functor<F> {
-  readonly of: <A>(a: A) => P.Kind<F, unknown, never, A>
+  readonly of: <A>(
+    a: A
+  ) => P.Kind<F, GetBot<F["variance"]["R"]>, GetBot<F["variance"]["E"]>, A>
 }
 
 export interface Apply<F extends P.HKT> extends Functor<F> {
   readonly ap: <R, E1, A>(
     fa: P.Kind<F, R, E1, A>
-  ) => <R1, E, B>(fab: P.Kind<F, R1, E, (a: A) => B>) => P.Kind<F, R & R1, E | E1, B>
+  ) => <R1, E, B>(
+    fab: P.Kind<F, R1, E, (a: A) => B>
+  ) => P.Kind<F, Mix<F["variance"]["R"], [R, R1]>, Mix<F["variance"]["E"], [E, E1]>, B>
 }
 
 export function getApply<F extends P.HKT>(F: Monad<F>): Apply<F> {
@@ -50,7 +55,9 @@ export function getApplicative<F extends P.HKT>(F: Monad<F>): Applicative<F> {
 export interface Monad<F extends P.HKT> extends Pointed<F> {
   readonly chain: <A, R1, E1, B>(
     f: (a: A) => P.Kind<F, R1, E1, B>
-  ) => <R, E>(fa: P.Kind<F, R, E, A>) => P.Kind<F, R & R1, E | E1, B>
+  ) => <R, E>(
+    fa: P.Kind<F, R, E, A>
+  ) => P.Kind<F, Mix<F["variance"]["R"], [R, R1]>, Mix<F["variance"]["E"], [E, E1]>, B>
 }
 
 export interface Traversable<F extends P.HKT> extends P.Typeclass<F> {
@@ -68,9 +75,11 @@ export interface Semigroup<A> {
 export interface Eitherable<F extends P.HKT> extends P.Typeclass<F> {
   readonly either: <R, E, A>(
     fa: P.Kind<F, R, E, A>
-  ) => P.Kind<F, R, never, Either<E, A>>
+  ) => P.Kind<F, R, GetBot<F["variance"]["E"]>, Either<E, A>>
 }
 
 export interface Failable<F extends P.HKT> extends P.Typeclass<F> {
-  readonly fail: <E>(fa: E) => P.Kind<F, unknown, E, never>
+  readonly fail: <E>(
+    fa: E
+  ) => P.Kind<F, GetBot<F["variance"]["R"]>, E, GetBot<F["variance"]["A"]>>
 }

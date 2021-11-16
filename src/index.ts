@@ -5,6 +5,7 @@ import { pipe } from "@effect-ts/core/Function"
 import * as O from "@effect-ts/system/Option"
 
 import * as P from "./prelude.js"
+import { GetBot } from "./prelude/variance.js"
 
 //
 // Semigroup
@@ -21,6 +22,11 @@ export interface Identity<A> {
 }
 
 export interface IdentityF extends P.HKT {
+  readonly variance: {
+    readonly R: "-"
+    readonly E: "+"
+    readonly A: "+"
+  }
   readonly type: this["A"]
 }
 
@@ -35,6 +41,11 @@ export const MonadIdentity = P.instance<P.Monad<IdentityF>>({
 //
 
 export interface OptionF extends P.HKT {
+  readonly variance: {
+    readonly R: "-"
+    readonly E: "+"
+    readonly A: "+"
+  }
   readonly type: O.Option<this["A"]>
 }
 
@@ -55,11 +66,22 @@ export const ApplyOption = P.getApply(MonadOption)
 //
 
 export interface EitherF extends P.HKT {
+  readonly variance: {
+    readonly R: "-"
+    readonly E: "+"
+    readonly A: "+"
+  }
   readonly type: E.Either<this["E"], this["A"]>
 }
 
 export interface EitherT<F extends P.HKT> extends P.HKT {
-  readonly type: P.Kind<F, this["R"], never, E.Either<this["E"], this["A"]>>
+  readonly variance: F["variance"]
+  readonly type: P.Kind<
+    F,
+    this["R"],
+    GetBot<F["variance"]["E"]>,
+    E.Either<this["E"], this["A"]>
+  >
 }
 
 export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
@@ -108,6 +130,11 @@ export const getValidationEither = P.getValidation(
 //
 
 export interface ChunkF extends P.HKT {
+  readonly variance: {
+    readonly R: "-"
+    readonly E: "+"
+    readonly A: "+"
+  }
   readonly type: C.Chunk<this["A"]>
 }
 
@@ -160,6 +187,11 @@ export const res = pipe(
 //
 
 export interface EffectF extends P.HKT {
+  readonly variance: {
+    readonly R: "-"
+    readonly E: "+"
+    readonly A: "+"
+  }
   readonly type: T.Effect<this["R"], this["E"], this["A"]>
 }
 
@@ -211,10 +243,18 @@ export interface ReaderF extends P.HKT {
 }
 
 export interface ReaderT<F extends P.HKT> extends P.HKT {
-  readonly type: Reader<this["R"], P.Kind<F, unknown, this["E"], this["A"]>>
+  readonly variance: {
+    readonly R: '-'
+    readonly E: '+'
+    readonly A: '+'
+  }
+  readonly type: Reader<
+    this["R"],
+    P.Kind<F, GetBot<F["variance"]["R"]>, this["E"], this["A"]>
+  >
 }
 
-export function readerT<F>(F: P.Monad<F>) {
+export function readerT<F extends P.HKT>(F: P.Monad<F>) {
   return P.instance<P.Monad<ReaderT<F>>>({
     of: (a) => () => F.of(a),
     map: (f) => (fa) => (r) => pipe(fa(r), F.map(f)),
@@ -271,6 +311,7 @@ export const validatedEffectPar = pipe(
 )
 
 export interface StateT<F extends P.HKT, S> extends P.HKT {
+  readonly variance: F['variance']
   readonly type: (s: S) => P.Kind<F, this["R"], this["E"], readonly [S, this["A"]]>
 }
 
