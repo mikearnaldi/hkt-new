@@ -9,6 +9,7 @@ import * as P from "./prelude.js"
 //
 // Semigroup
 //
+
 export const SemigroupString = P.instance<P.Semigroup<string>>({
   concat: (a, b) => `${a}, ${b}`
 })
@@ -59,7 +60,7 @@ export interface EitherF extends P.HKT {
 }
 
 export interface EitherT<F extends P.HKT> extends P.HKT {
-  readonly type: P.Kind<F, this["R"], never, E.Either<this["E"], this["A"]>>
+  readonly type: P.Kind<F, this["K"], this["R"], never, E.Either<this["E"], this["A"]>>
 }
 
 export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
@@ -67,14 +68,14 @@ export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
     of: (a) => F.of(E.right(a)),
     map: <A, B>(
       f: (a: A) => B
-    ): (<R, E>(
-      fa: P.Kind<F, R, never, E.Either<E, A>>
-    ) => P.Kind<F, R, never, E.Either<E, B>>) => F.map(E.map(f)),
-    chain: <A, R1, E1, B>(
-      f: (a: A) => P.Kind<F, R1, never, E.Either<E1, B>>
-    ): (<R, E>(
-      fa: P.Kind<F, R, never, E.Either<E, A>>
-    ) => P.Kind<F, R & R1, never, E.Either<E1 | E, B>>) =>
+    ): (<K extends F["$K"], R, E>(
+      fa: P.Kind<F, K, R, never, E.Either<E, A>>
+    ) => P.Kind<F, K, R, never, E.Either<E, B>>) => F.map(E.map(f)),
+    chain: <A, K1 extends F["$K"], R1, E1, B>(
+      f: (a: A) => P.Kind<F, K1, R1, never, E.Either<E1, B>>
+    ): (<K extends F["$K"], R, E>(
+      fa: P.Kind<F, K, R, never, E.Either<E, A>>
+    ) => P.Kind<F, K1, R & R1, never, E.Either<E1 | E, B>>) =>
       F.chain(
         E.fold(
           (e) => F.of(E.leftW<E1 | typeof e, B>(e)),
@@ -114,9 +115,9 @@ export interface ChunkF extends P.HKT {
 export const TraversableChunk = P.instance<P.Traversable<ChunkF>>({
   traverse:
     <G extends P.HKT>(G: P.Applicative<G>) =>
-    <A, RG, B, EG>(f: (a: A) => P.Kind<G, RG, EG, B>) =>
+    <A, KG extends G["$K"], RG, B, EG>(f: (a: A) => P.Kind<G, KG, RG, EG, B>) =>
     (self: C.Chunk<A>) =>
-      C.reduce_<A, P.Kind<G, RG, EG, C.Chunk<B>>>(self, G.of(C.empty()), (fbs, a) =>
+      C.reduce_<A, P.Kind<G, KG, RG, EG, C.Chunk<B>>>(self, G.of(C.empty()), (fbs, a) =>
         pipe(
           fbs,
           G.map((bs) => (b: B) => C.append_(bs, b)),
@@ -211,10 +212,10 @@ export interface ReaderF extends P.HKT {
 }
 
 export interface ReaderT<F extends P.HKT> extends P.HKT {
-  readonly type: Reader<this["R"], P.Kind<F, unknown, this["E"], this["A"]>>
+  readonly type: Reader<this["R"], P.Kind<F, this["K"], unknown, this["E"], this["A"]>>
 }
 
-export function readerT<F>(F: P.Monad<F>) {
+export function readerT<F extends P.HKT>(F: P.Monad<F>) {
   return P.instance<P.Monad<ReaderT<F>>>({
     of: (a) => () => F.of(a),
     map: (f) => (fa) => (r) => pipe(fa(r), F.map(f)),
@@ -271,19 +272,25 @@ export const validatedEffectPar = pipe(
 )
 
 export interface StateT<F extends P.HKT, S> extends P.HKT {
-  readonly type: (s: S) => P.Kind<F, this["R"], this["E"], readonly [S, this["A"]]>
+  readonly type: (
+    s: S
+  ) => P.Kind<F, this["K"], this["R"], this["E"], readonly [S, this["A"]]>
 }
 
 export interface State<F extends P.HKT, S> extends P.Typeclass<StateT<F, S>> {
-  readonly get: P.Kind<StateT<F, S>, unknown, never, S>
+  readonly get: P.Kind<StateT<F, S>, never, unknown, never, S>
 
   readonly update: (
     f: (s: S) => S
-  ) => <R, E, A>(fa: P.Kind<StateT<F, S>, R, E, A>) => P.Kind<StateT<F, S>, R, E, A>
+  ) => <K extends F["$K"], R, E, A>(
+    fa: P.Kind<StateT<F, S>, K, R, E, A>
+  ) => P.Kind<StateT<F, S>, K, R, E, A>
 
   readonly runState: (
     s: S
-  ) => <R, E, A>(fa: P.Kind<StateT<F, S>, R, E, A>) => P.Kind<F, R, E, A>
+  ) => <K extends F["$K"], R, E, A>(
+    fa: P.Kind<StateT<F, S>, K, R, E, A>
+  ) => P.Kind<F, K, R, E, A>
 }
 
 export function stateT<S>() {
@@ -326,4 +333,29 @@ export const myProgram = pipe(
   StateEffect.update((x) => `hello: ${x}`),
   StateEffect.bind("b", () => StateEffect.get),
   StateEffect.runState("Mike")
+)
+
+export interface RecordF extends P.HKT {
+  readonly $K: string
+
+  readonly type: Record<
+    // @ts-expect-error
+    this["K"],
+    this["A"]
+  >
+}
+
+export const FunctorRecord = P.instance<P.Functor<RecordF>>({
+  map: (f) => (fa) => {
+    const y = {} as Record<keyof typeof fa, ReturnType<typeof f>>
+    for (const k of Object.keys(fa) as (keyof typeof fa)[]) {
+      y[k] = f(fa[k])
+    }
+    return y
+  }
+})
+
+const resss = pipe(
+  { a: 0, b: 1 } as const,
+  FunctorRecord.map((v) => v)
 )

@@ -1,4 +1,3 @@
-import type { Either } from "@effect-ts/core"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { HKT, Kind, URI } from "./hkt.js"
@@ -13,14 +12,15 @@ import type {
 import { instance } from "./utils.js"
 
 export interface DoF<F extends HKT> {
-  do: Kind<F, unknown, never, {}>
-  bind: <N extends string, R, E, A, Scope>(
+  do: Kind<F, never, unknown, never, {}>
+  bind: <N extends string, K extends F["$K"], R, E, A, Scope>(
     name: N extends keyof Scope ? { error: `binding name '${N}' already in use` } : N,
-    fn: (_: Scope) => Kind<F, R, E, A>
-  ) => <R0, E0>(
-    self: Kind<F, R0, E0, Scope>
+    fn: (_: Scope) => Kind<F, K, R, E, A>
+  ) => <K0 extends F["$K"], R0, E0>(
+    self: Kind<F, K0, R0, E0, Scope>
   ) => Kind<
     F,
+    K,
     R & R0,
     E | E0,
     {
@@ -33,13 +33,13 @@ export function getDo<F extends HKT>(F: Monad<F>): DoF<F> {
   return {
     do: F.of({}),
     bind:
-      <N extends string, R, E, A, Scope>(
+      <N extends string, K, R, E, A, Scope>(
         name: N extends keyof Scope
           ? { error: `binding name '${N}' already in use` }
           : N,
-        fn: (_: Scope) => Kind<F, R, E, A>
+        fn: (_: Scope) => Kind<F, K, R, E, A>
       ) =>
-      <R0, E0>(self: Kind<F, R0, E0, Scope>) =>
+      <K0 extends F["$K"], R0, E0>(self: Kind<F, K0, R0, E0, Scope>) =>
         pipe(
           self,
           F.chain((scope) =>
@@ -60,11 +60,14 @@ export function getDo<F extends HKT>(F: Monad<F>): DoF<F> {
 }
 
 export interface Validation<F extends HKT, E> extends HKT {
-  readonly type: Kind<F, this["R"], E, this["A"]>
+  readonly type: Kind<F, this["K"], this["R"], E, this["A"]>
 }
 
 export function getZip<F extends HKT>(F: Apply<F>) {
-  return <R, E, A, R1, E1, A1>(fa: Kind<F, R, E, A>, fb: Kind<F, R1, E1, A1>) =>
+  return <K extends F["$K"], R, E, A, K1 extends F["$K"], R1, E1, A1>(
+    fa: Kind<F, K, R, E, A>,
+    fb: Kind<F, K1, R1, E1, A1>
+  ) =>
     pipe(
       fb,
       F.map((a1) => (a: A) => [a, a1] as const),
