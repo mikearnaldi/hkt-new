@@ -1,4 +1,3 @@
-import type { Either } from "@effect-ts/core"
 import { pipe } from "@effect-ts/core/Function"
 
 import type { HKT, Kind, URI } from "./hkt.js"
@@ -10,7 +9,6 @@ import type {
   Monad,
   Semigroup
 } from "./typeclasses.js"
-import { instance } from "./utils.js"
 
 export interface DoF<F extends HKT> {
   do: Kind<F, unknown, never, {}>
@@ -80,30 +78,33 @@ export function getValidation<F extends HKT>(
 ) {
   const zip = getZip(A)
 
-  return <Z>(S: Semigroup<Z>) =>
-    instance<Applicative<Validation<F, Z>> & Monad<Validation<F, Z>>>({
-      of: M.of,
-      map: M.map,
-      chain: M.chain,
-      ap: (fa) => (fab) =>
-        pipe(
-          zip(E.either(fa), E.either(fab)),
-          M.chain(([ea, efab]) => {
-            if (efab._tag === "Left" && ea._tag === "Left") {
-              return F.fail(S.concat(ea.left, efab.left))
-            } else if (ea._tag === "Left") {
-              return F.fail(ea.left)
-            } else if (efab._tag === "Left") {
-              return F.fail(efab.left)
-            } else {
-              return M.of(efab.right(ea.right))
-            }
-          })
-        )
-    })
+  return <Z>(
+    S: Semigroup<Z>
+  ): Applicative<Validation<F, Z>> & Monad<Validation<F, Z>> => ({
+    of: M.of,
+    map: M.map,
+    chain: M.chain,
+    ap: (fa) => (fab) =>
+      pipe(
+        zip(E.either(fa), E.either(fab)),
+        M.chain(([ea, efab]) => {
+          if (efab._tag === "Left" && ea._tag === "Left") {
+            return F.fail(S.concat(ea.left, efab.left))
+          } else if (ea._tag === "Left") {
+            return F.fail(ea.left)
+          } else if (efab._tag === "Left") {
+            return F.fail(efab.left)
+          } else {
+            return M.of(efab.right(ea.right))
+          }
+        })
+      )
+  })
 }
 
-export function withDo<I extends Monad<any>>(F: I): I & DoF<I[typeof URI]> {
+export function withDo<I extends Monad<any>>(
+  F: I
+): I & DoF<NonNullable<I[typeof URI]>> {
   //@ts-expect-error
   return P.intersect(F, P.getDo(F))
 }

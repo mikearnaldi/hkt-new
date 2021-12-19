@@ -9,9 +9,9 @@ import * as P from "./prelude.js"
 //
 // Semigroup
 //
-export const SemigroupString = P.instance<P.Semigroup<string>>({
+export const SemigroupString: P.Semigroup<string> = {
   concat: (a, b) => `${a}, ${b}`
-})
+}
 
 //
 // Identity
@@ -24,11 +24,11 @@ export interface IdentityF extends P.HKT {
   readonly type: this["A"]
 }
 
-export const MonadIdentity = P.instance<P.Monad<IdentityF>>({
+export const MonadIdentity: P.Monad<IdentityF> = {
   of: (a) => a,
   map: (f) => (a) => f(a),
   chain: (f) => (a) => f(a)
-})
+}
 
 //
 // Option
@@ -38,12 +38,14 @@ export interface OptionF extends P.HKT {
   readonly type: O.Option<this["A"]>
 }
 
-export function optionT<F extends P.HKT>(F: P.Monad<F>) {
-  return P.instance<P.Monad<P.ComposeF<F, OptionF>>>({
+export function optionT<F extends P.HKT>(
+  F: P.Monad<F>
+): P.Monad<P.ComposeF<F, OptionF>> {
+  return {
     of: (a) => F.of(O.some(a)),
     map: (f) => F.map(O.map(f)),
     chain: (f) => F.chain((o) => (o._tag === "None" ? F.of(O.none) : f(o.value)))
-  })
+  }
 }
 
 export const MonadOption = optionT(MonadIdentity)
@@ -62,8 +64,8 @@ export interface EitherT<F extends P.HKT> extends P.HKT {
   readonly type: P.Kind<F, this["R"], never, E.Either<this["E"], this["A"]>>
 }
 
-export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
-  return P.instance<P.Monad<EitherT<F>>>({
+export function eitherT<F extends P.HKT>(F: P.Monad<F>): P.Monad<EitherT<F>> {
+  return {
     of: (a) => F.of(E.right(a)),
     map: <A, B>(
       f: (a: A) => B
@@ -81,20 +83,20 @@ export function eitherT<F extends P.HKT>(F: P.Monad<F>) {
           (a) => f(a)
         )
       )
-  })
+  }
 }
 
 export const MonadEither = eitherT(MonadIdentity)
 
 export const ApplyEither = P.getApply(MonadEither)
 
-export const FailableEither = P.instance<P.Failable<EitherF>>({
+export const FailableEither: P.Failable<EitherF> = {
   fail: E.left
-})
+}
 
-export const EitherableEither = P.instance<P.Eitherable<EitherF>>({
+export const EitherableEither: P.Eitherable<EitherF> = {
   either: E.right
-})
+}
 
 export const getValidationEither = P.getValidation(
   MonadEither,
@@ -111,7 +113,7 @@ export interface ChunkF extends P.HKT {
   readonly type: C.Chunk<this["A"]>
 }
 
-export const TraversableChunk = P.instance<P.Traversable<ChunkF>>({
+export const TraversableChunk: P.Traversable<ChunkF> = {
   traverse:
     <G extends P.HKT>(G: P.Applicative<G>) =>
     <A, RG, B, EG>(f: (a: A) => P.Kind<G, RG, EG, B>) =>
@@ -123,24 +125,24 @@ export const TraversableChunk = P.instance<P.Traversable<ChunkF>>({
           G.ap(f(a))
         )
       )
-})
+}
 
-export const MonadChunk = P.instance<P.Monad<ChunkF>>({
+export const MonadChunk: P.Monad<ChunkF> = {
   of: C.single,
   map: C.map,
   chain: C.chain
-})
+}
 
 export function chunkT<F extends P.HKT>(
   F: P.Monad<F>,
   A: P.Applicative<F> = P.getApplicative(F)
-) {
+): P.Monad<P.ComposeF<F, ChunkF>> {
   const traverse = TraversableChunk.traverse(A)
-  return P.instance<P.Monad<P.ComposeF<F, ChunkF>>>({
+  return {
     of: (a) => F.of(C.single(a)),
     map: (f) => F.map(C.map(f)),
     chain: (f) => (fa) => pipe(fa, F.chain(traverse(f)), F.map(C.flatten))
-  })
+  }
 }
 
 export const CEO = pipe(MonadChunk, eitherT, optionT, (monad) =>
@@ -163,26 +165,26 @@ export interface EffectF extends P.HKT {
   readonly type: T.Effect<this["R"], this["E"], this["A"]>
 }
 
-export const MonadEffect = P.instance<P.Monad<EffectF>>({
+export const MonadEffect: P.Monad<EffectF> = {
   of: T.succeed,
   map: T.map,
   chain: T.chain
-})
+}
 
 export const ApplyEffect = P.getApply(MonadEffect)
 
-export const ApplyEffectPar = P.instance<P.Apply<EffectF>>({
+export const ApplyEffectPar: P.Apply<EffectF> = {
   map: T.map,
   ap: (fa) => (fab) => T.zipWithPar_(fa, fab, (a, f) => f(a))
-})
+}
 
-export const FailableEffect = P.instance<P.Failable<EffectF>>({
+export const FailableEffect: P.Failable<EffectF> = {
   fail: T.fail
-})
+}
 
-export const EitherableEffect = P.instance<P.Eitherable<EffectF>>({
+export const EitherableEffect: P.Eitherable<EffectF> = {
   either: T.either
-})
+}
 
 export const getValidationEffect = P.getValidation(
   MonadEffect,
@@ -214,8 +216,8 @@ export interface ReaderT<F extends P.HKT> extends P.HKT {
   readonly type: Reader<this["R"], P.Kind<F, unknown, this["E"], this["A"]>>
 }
 
-export function readerT<F>(F: P.Monad<F>) {
-  return P.instance<P.Monad<ReaderT<F>>>({
+export function readerT<F extends P.HKT>(F: P.Monad<F>): P.Monad<ReaderT<F>> {
+  return {
     of: (a) => () => F.of(a),
     map: (f) => (fa) => (r) => pipe(fa(r), F.map(f)),
     chain: (f) => (fa) => (r) =>
@@ -223,7 +225,7 @@ export function readerT<F>(F: P.Monad<F>) {
         fa(r),
         F.chain((a) => f(a)(r))
       )
-  })
+  }
 }
 
 export const RO = pipe(readerT(MonadOption), (monad) =>
@@ -288,7 +290,7 @@ export interface State<F extends P.HKT, S> extends P.Typeclass<StateT<F, S>> {
 
 export function stateT<S>() {
   return <F extends P.HKT>(F: P.Monad<F>) => {
-    const monad = P.instance<P.Monad<StateT<F, S>>>({
+    const monad: P.Monad<StateT<F, S>> = {
       of: (a) => (s) => F.of([s, a]),
       map: (f) => (fa) => (s) =>
         pipe(
@@ -300,8 +302,8 @@ export function stateT<S>() {
           fa(s),
           F.chain(([s, a]) => f(a)(s))
         )
-    })
-    const state = P.instance<State<F, S>>({
+    }
+    const state: State<F, S> = {
       update: (f) => (fa) => (s) =>
         pipe(
           fa(s),
@@ -313,7 +315,7 @@ export function stateT<S>() {
           fa(s),
           F.map(([_, a]) => a)
         )
-    })
+    }
     return P.intersect(monad, state)
   }
 }

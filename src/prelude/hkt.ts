@@ -1,7 +1,7 @@
 export declare const URI: unique symbol
 
 export interface Typeclass<F extends HKT> {
-  readonly [URI]: F
+  readonly [URI]?: F
 }
 
 export interface HKT {

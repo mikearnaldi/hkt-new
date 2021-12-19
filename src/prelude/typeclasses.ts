@@ -2,7 +2,6 @@ import type { Either } from "@effect-ts/core/Either"
 import { pipe } from "@effect-ts/core/Function"
 
 import type * as P from "./hkt.js"
-import { instance } from "./utils.js"
 
 export interface Functor<F extends P.HKT> extends P.Typeclass<F> {
   readonly map: <A, B>(
@@ -21,7 +20,7 @@ export interface Apply<F extends P.HKT> extends Functor<F> {
 }
 
 export function getApply<F extends P.HKT>(F: Monad<F>): Apply<F> {
-  return instance({
+  return {
     map: F.map,
     ap:
       <R1, E1, A>(fa: P.Kind<F, R1, E1, A>) =>
@@ -35,16 +34,16 @@ export function getApply<F extends P.HKT>(F: Monad<F>): Apply<F> {
             )
           )
         )
-  })
+  }
 }
 
 export interface Applicative<F extends P.HKT> extends Pointed<F>, Apply<F> {}
 
 export function getApplicative<F extends P.HKT>(F: Monad<F>): Applicative<F> {
-  return instance({
+  return {
     ...getApply(F),
     of: F.of
-  })
+  }
 }
 
 export interface Monad<F extends P.HKT> extends Pointed<F> {
